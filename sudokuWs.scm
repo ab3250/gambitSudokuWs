@@ -27,9 +27,7 @@
         (close-output-port p))))
         
 (define (grid-string grid)
-  (string-append  "{\"type\":\"grid\",\"num\":\"" (apply string-append (map number->string (vector->list grid))) "\"}")
-  
- )
+  (string-append  "{\"type\":\"grid\",\"num\":\"" (apply string-append (map number->string (vector->list grid))) "\"}"))
 
 (define (lock-buttons)
   (call-with-output-file fifoOut write "{\"type\":\"lock\"}"))
@@ -70,6 +68,18 @@
       '(0 6 0 0 0 0 2 8 0)
       '(0 0 0 4 1 9 0 0 5)
       '(0 0 0 0 8 0 0 7 9))))
+
+(define grid3 (list->vector
+    (append
+      '(0 0 0 0 0 0 3 0 0)
+      '(0 0 1 0 0 7 0 0 6)
+      '(5 4 0 0 0 0 0 0 8)
+      '(0 0 0 7 0 8 0 2 0)
+      '(0 6 0 0 0 9 0 5 0)
+      '(0 0 8 0 0 0 0 4 0)
+      '(0 0 0 0 0 0 0 8 0)
+      '(1 5 0 3 0 0 0 0 0)
+      '(2 0 0 0 1 0 0 0 7))))
 
   (define grid1 (list->vector
     (append
@@ -171,7 +181,7 @@
 	       (for2 0 8 (lambda(col)
                     (if (eqv?(vector-ref grid (row_col->cell row col)) 0)
                         (let num-loop ((num 1))
-                        (delay-seconds 10)
+                        (delay-seconds 50)
                           (if (not (eqv? 10 num))
                               (begin
                                 (if (possible? row col num grid)
@@ -179,7 +189,9 @@
                                       (vector-set! grid (row_col->cell row col) num)
                                       (call-with-output-file fifoOut write (grid-string grid))
                                       (solve grid)
-                                      (when (no-zeros-left? grid)(begin (print-grid grid) (exit)))                                     
+                                      (when (no-zeros-left? grid)(begin
+                                       ;(print-grid grid) 
+                                       (return)))                                     
                                       (vector-set! grid (row_col->cell row col) 0)))
                                 (num-loop (+ 1 num)))
                               (return))))))))))
@@ -188,9 +200,9 @@
   (let loop ()
     (let ((msg (call-with-input-file fifoIn read-line)))          
       (cond       
-        ((string=? msg "button1")(solve (vector-copy grid1)))
-        ((string=? msg "button2")(solve (vector-copy grid2)))
-        ((string=? msg "button3")(call-with-output-file fifoOut write (grid-string grid1)))
+        ((string=? msg "button1")(begin (lock-buttons)(solve (vector-copy grid3))(unlock-buttons)))
+        ((string=? msg "button2")(begin (lock-buttons)(solve (vector-copy grid2))(unlock-buttons)))
+        ((string=? msg "button3")(call-with-output-file fifoOut write (grid-string grid3)))
         ((string=? msg "button4")(call-with-output-file fifoOut write (grid-string grid2))))
   (loop))))
 
