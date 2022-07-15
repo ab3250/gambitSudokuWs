@@ -1,14 +1,17 @@
 #!/usr/bin/env gsi-script
 ;;;;sudoku solver v1
 
-(import (scheme time))
+(import (scheme time)
+;(syntax-case)
+)
+(##include "~~lib/_syntax.scm")
 
 ;(##include "~~/lib/gambit/vector/vector#.scm")
 
  (define fifoIn "/tmp/fifoIn")
  (define fifoOut "/tmp/fifoOut")
 
-  (define (delay-seconds sec) 
+  (define (delay-jiffys sec) 
         (let ((start (current-jiffy)))
         (let timeloop ()    
             (if ( < (- (current-jiffy) start) sec) (timeloop)))))
@@ -49,7 +52,7 @@
       (lambda (return)
         body ...)))))
 
- (define for2 (lambda (start end func)
+ (define for (lambda (start end func)
       (let loop ((index start))
         (if (> index end) #t
           (begin
@@ -111,8 +114,8 @@
  
   (define (print-grid grid)
     (newline)
-    (for2 0 8 (lambda(row)
-      (for2 0 8 (lambda(col)
+    (for 0 8 (lambda(row)
+      (for 0 8 (lambda(col)
         (display (vector-ref grid (row_col->cell row col)))))
         (newline)
         )))
@@ -169,25 +172,22 @@
   (and (check (get_row_cells row) num grid)
        (check (get_col_cells col) num grid)
        (check (get_box_cells row col) num grid)))
-    
-(define for2 (lambda (start end func)
-              (let loop ((index start))
-                (if (> index end) #t
-                    (begin (func index) (loop (+ index 1))) ))))
+  
+
 
 (define (solve grid)
   (let/ec return
-    (for2 0 8 (lambda(row)
-	       (for2 0 8 (lambda(col)
+    (for 0 8 (lambda(row)
+	       (for 0 8 (lambda(col)
                     (if (eqv?(vector-ref grid (row_col->cell row col)) 0)
-                        (let num-loop ((num 1))
-                        (delay-seconds 50)
+                        (let num-loop ((num 1))                        
                           (if (not (eqv? 10 num))
                               (begin
                                 (if (possible? row col num grid)
                                     (begin
                                       (vector-set! grid (row_col->cell row col) num)
                                       (call-with-output-file fifoOut write (grid-string grid))
+                                      (delay-jiffys 50)
                                       (solve grid)
                                       (when (no-zeros-left? grid)(begin
                                        ;(print-grid grid) 
@@ -200,8 +200,8 @@
   (let loop ()
     (let ((msg (call-with-input-file fifoIn read-line)))          
       (cond       
-        ((string=? msg "button1")(begin (lock-buttons)(solve (vector-copy grid3))(unlock-buttons)))
-        ((string=? msg "button2")(begin (lock-buttons)(solve (vector-copy grid2))(unlock-buttons)))
+        ((string=? msg "button1")(lock(solve (vector-copy grid3))))
+        ((string=? msg "button2")(lock(solve (vector-copy grid2))))
         ((string=? msg "button3")(call-with-output-file fifoOut write (grid-string grid3)))
         ((string=? msg "button4")(call-with-output-file fifoOut write (grid-string grid2))))
   (loop))))
